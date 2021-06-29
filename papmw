@@ -1,0 +1,64 @@
+#!/bin/bash
+if [ -z "@$" ]; then
+    echo "No arguments passed."
+fi
+PAC=""
+YAY=""
+NOTFOUND=""
+COMMAND="$1"
+PAPMWVER="0.1"
+shift
+case $COMMAND in
+    "help" | "--help")
+        if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
+        echo "PAPMW - PQCraft's Arch Package Manager Wraper v$PAPMWVER"
+        echo "    Available commands:"
+        echo "        help - displays this help text"
+        echo "        install PACKAGE... - installs packages"
+        ;;
+    "version" | "--version")
+        if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
+        echo "PAPMW - PQCraft's Arch Package Manager Wraper version $PAPMWVER"
+        echo "Licensed under the GNU GPL v3"
+        ;;
+    "install")
+        printf "\r\e[2KSearching packages..."
+        p=0
+        for i in "$@"; do
+            printf "\r\e[2KSearching packages (%s%%)..." $((p*100/$#))
+            if (pacman -Ss "^$i$" &> /dev/null); then 
+                PAC="$PAC$i "
+            else
+                if [ "$(yay -Ss "$i" 2> /dev/null | grep -E "*/$i ")" ]; then 
+                    YAY="$YAY$i "
+                else
+                    NOTFOUND="$NOTFOUND$i "
+                fi
+            fi
+            ((p=p+1))
+        done
+        printf "\r\e[2KSearching packages (100%%)...\n"
+        if [ "$NOTFOUND" ]; then
+            NOTFOUND="$(echo "$NOTFOUND" | sed -e 's/\s\+/, /g')"
+            if [ ${#NOTFOUND} -gt 2 ]; then NOTFOUND="${NOTFOUND::-2}"; fi
+            echo "The following packages could not be found:" "$NOTFOUND"
+            if [ "$PAC$YAY" ]; then
+                echo -n "Continue? [y/N]: "
+                read -n 1 I
+                if [ ! -z "$I" ]; then 
+                    echo
+                fi
+                [[ "$I" =~ ^[^Yy]$ || -z "$I" ]] && exit 1
+            else
+                exit
+            fi
+        fi
+        sudo -- echo -n
+        if [ "$PAC" ]; then sudo -- pacman --needed -S $PAC; fi
+        if [ "$YAY" ]; then yay --needed -S $PAC; fi
+        ;;
+    *)
+        echo "Unkown command:" "$COMMAND"
+        ;;
+esac
+
