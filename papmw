@@ -16,7 +16,7 @@ function loadcfg() {
 }
 loadcfg "/home/$USER/.config/papmw.conf"
 loadcfg "/home/$USER/.papmw.conf"
-PAPMWVER="0.2"
+PAPMWVER="0.3"
 PAC=""
 AUR=""
 NOTFOUND=""
@@ -79,7 +79,7 @@ case $COMMAND in
         p=0
         for i in "$@"; do
             printf "\r\e[0m\e[2K\e[1mSearching packages (%s%%)... [%s]\e[0m" "$((p*100/$#))" "$i"
-            if (pacman -Q "^$i$" &> /dev/null); then 
+            if (pacman -Q "$i" &> /dev/null); then 
                 PAC="$PAC$i "
             else
                 NOTFOUND="$NOTFOUND$i "
@@ -94,8 +94,10 @@ case $COMMAND in
             if [ "$PAC$AUR" ]; then
                 echo -n "Continue? [Y/n]: "
                 read -n 1 I
-                if [[ ! -z "$I" ]]; then echo; fi
-                [[ ! "$I" =~ ^[^Yy]$ || ! -z "$I" ]] && exit 1
+                if [[ ! -z "$I" ]]; then
+                    echo
+                    [[ "$I" =~ ^[^Yy]$ ]] && exit 1
+                fi
             else
                 exit
             fi
