@@ -1,20 +1,37 @@
 #!/bin/bash
-if [ -z "@$" ]; then
+if [[ -z "$@" ]]; then
     echo "No arguments passed."
 fi
+function getroot() {
+    trap "true" SIGINT
+    if [ "$(sudo -- whoami)" != "root" ]; then echo "Superuser authentication failed."; exit 1; fi
+    trap - SIGINT
+}
+SUDOBIN="sudo"
+AURBIN="yay"
+function loadcfg() {
+    if [ -f "$1" ]; then
+        $(cat "$(find "$1" -type f)" | grep -o '^\S*=*' | grep '=' | perl -ne 'printf "export $_"')
+    fi
+}
+loadcfg "/home/$USER/.config/papmw.conf"
+loadcfg "/home/$USER/.papmw.conf"
+PAPMWVER="0.2"
 PAC=""
-YAY=""
+AUR=""
 NOTFOUND=""
 COMMAND="$1"
-PAPMWVER="0.1"
 shift
 case $COMMAND in
     "help" | "--help")
         if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
         echo "PAPMW - PQCraft's Arch Package Manager Wraper v$PAPMWVER"
         echo "    Available commands:"
-        echo "        help - displays this help text"
+        echo "        help/--help - displays this help text"
+        echo "        version/--version - displays the version and license info"
         echo "        install PACKAGE... - installs packages"
+        echo "        uninstall/remove PACKAGE... - uninstalls packages"
+        echo "        refresh/sync - syncs repos"
         ;;
     "version" | "--version")
         if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
@@ -22,40 +39,77 @@ case $COMMAND in
         echo "Licensed under the GNU GPL v3"
         ;;
     "install")
-        printf "\r\e[2KSearching packages..."
+        if [ $# -lt 1 ]; then echo "Incorrect argument count."; exit 1; fi
+        printf "\r\e[0m\e[2K\e[1mSearching packages...\e[0m"
         p=0
         for i in "$@"; do
-            printf "\r\e[2KSearching packages (%s%%)..." $((p*100/$#))
+            printf "\r\e[0m\e[2K\e[1mSearching packages (%s%%)... [%s]\e[0m" "$((p*100/$#))" "$i"
             if (pacman -Ss "^$i$" &> /dev/null); then 
                 PAC="$PAC$i "
             else
-                if [ "$(yay -Ss "$i" 2> /dev/null | grep -E "*/$i ")" ]; then 
-                    YAY="$YAY$i "
+                if [ "$("$AURBIN" -Ss "$i" 2> /dev/null | grep -E "*/$i ")" ]; then 
+                    AUR="$AUR$i "
                 else
                     NOTFOUND="$NOTFOUND$i "
                 fi
             fi
             ((p=p+1))
         done
-        printf "\r\e[2KSearching packages (100%%)...\n"
+        printf "\r\e[0m\e[2K\e[1mSearching packages (100%%)...\e[0m\n"
         if [ "$NOTFOUND" ]; then
             NOTFOUND="$(echo "$NOTFOUND" | sed -e 's/\s\+/, /g')"
             if [ ${#NOTFOUND} -gt 2 ]; then NOTFOUND="${NOTFOUND::-2}"; fi
-            echo "The following packages could not be found:" "$NOTFOUND"
-            if [ "$PAC$YAY" ]; then
+            printf "\e[0m\e[1m\e[31mThe following packages could not be found: %s\e[0m\n" "$NOTFOUND"
+            if [ "$PAC$AUR" ]; then
                 echo -n "Continue? [y/N]: "
                 read -n 1 I
-                if [ ! -z "$I" ]; then 
-                    echo
-                fi
+                if [[ ! -z "$I" ]]; then echo; fi
                 [[ "$I" =~ ^[^Yy]$ || -z "$I" ]] && exit 1
             else
                 exit
             fi
         fi
-        sudo -- echo -n
-        if [ "$PAC" ]; then sudo -- pacman --needed -S $PAC; fi
-        if [ "$YAY" ]; then yay --needed -S $PAC; fi
+        getroot
+        if [ "$PAC" ]; then (echo -n y | sudo -- pacman --needed -S $PAC); fi
+        if [ "$AUR" ]; then (echo -n y | "$AURBIN" --needed -S $AUR); fi
+        ;;
+    "uninstall" | "remove")
+        if [ $# -lt 1 ]; then echo "Incorrect argument count."; exit 1; fi
+        printf "\r\e[0m\e[2K\e[1mSearching packages...\e[0m"
+        p=0
+        for i in "$@"; do
+            printf "\r\e[0m\e[2K\e[1mSearching packages (%s%%)... [%s]\e[0m" "$((p*100/$#))" "$i"
+            if (pacman -Q "^$i$" &> /dev/null); then 
+                PAC="$PAC$i "
+            else
+                NOTFOUND="$NOTFOUND$i "
+            fi
+            ((p=p+1))
+        done
+        printf "\r\e[0m\e[2K\e[1mSearching packages (100%%)...\e[0m\n"
+        if [ "$NOTFOUND" ]; then
+            NOTFOUND="$(echo "$NOTFOUND" | sed -e 's/\s\+/, /g')"
+            if [ ${#NOTFOUND} -gt 2 ]; then NOTFOUND="${NOTFOUND::-2}"; fi
+            printf "\e[0m\e[1m\e[31mThe following packages are not installed: %s\e[0m\n" "$NOTFOUND"
+            if [ "$PAC$AUR" ]; then
+                echo -n "Continue? [Y/n]: "
+                read -n 1 I
+                if [[ ! -z "$I" ]]; then echo; fi
+                [[ ! "$I" =~ ^[^Yy]$ || ! -z "$I" ]] && exit 1
+            else
+                exit
+            fi
+        fi
+        getroot
+        sudo pacman -R $PAC
+        ;;
+    "refresh" | "sync")
+        if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
+        getroot
+        echo "Refreshing pacman..."
+        sudo pacman -Sy
+        echo "Refreshing AUR..."
+        yay -Sy
         ;;
     *)
         echo "Unkown command:" "$COMMAND"
