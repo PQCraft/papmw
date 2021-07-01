@@ -1,6 +1,7 @@
 #!/bin/bash
 if [[ -z "$@" ]]; then
     echo "No arguments passed."
+    exit 1
 fi
 function getroot() {
     trap "true" SIGINT
@@ -9,6 +10,7 @@ function getroot() {
 }
 SUDOBIN="sudo"
 AURBIN="yay"
+AURPAC="-papmw-pac"
 function loadcfg() {
     if [ -f "$1" ]; then
         $(cat "$(find "$1" -type f)" | grep -o '^\S*=*' | grep '=' | perl -ne 'printf "export $_"')
@@ -16,7 +18,7 @@ function loadcfg() {
 }
 loadcfg "/home/$USER/.config/papmw.conf"
 loadcfg "/home/$USER/.papmw.conf"
-PAPMWVER="0.3"
+PAPMWVER="0.4"
 PAC=""
 AUR=""
 NOTFOUND=""
@@ -71,7 +73,7 @@ case $COMMAND in
         fi
         getroot
         if [ "$PAC" ]; then (echo -n y | sudo -- pacman --needed -S $PAC); fi
-        if [ "$AUR" ]; then (echo -n y | "$AURBIN" --needed -S $AUR); fi
+        if [ "$AUR" ]; then "$AURBIN" --pacman "$AURPAC" --needed -S $AUR; fi
         ;;
     "uninstall" | "remove")
         if [ $# -lt 1 ]; then echo "Incorrect argument count."; exit 1; fi
@@ -103,15 +105,20 @@ case $COMMAND in
             fi
         fi
         getroot
-        sudo pacman -R $PAC
+        echo -n y | sudo pacman -R $PAC
         ;;
     "refresh" | "sync")
         if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
         getroot
-        echo "Refreshing pacman..."
+        printf "\e[0m\e[1mRefreshing pacman...\e[0m\n"
         sudo pacman -Sy
-        echo "Refreshing AUR..."
+        printf "\e[0m\e[1mRefreshing AUR...\e[0m\n"
         yay -Sy
+        ;;
+    "update" | "upgrade")
+        if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
+        getroot
+        sudo pacman -Syu
         ;;
     *)
         echo "Unkown command:" "$COMMAND"
