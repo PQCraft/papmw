@@ -5,6 +5,7 @@ if [[ -z "$@" ]]; then
 fi
 function getroot() {
     trap "true" SIGINT
+    sudo -k
     if [ "$(sudo -- whoami)" != "root" ]; then echo "Superuser authentication failed."; exit 1; fi
     trap - SIGINT
 }
@@ -17,7 +18,7 @@ function loadcfg() {
 }
 loadcfg "/home/$USER/.config/papmw.conf"
 loadcfg "/home/$USER/.papmw.conf"
-PAPMWVER="0.4.1"
+PAPMWVER="0.4.2"
 PAC=""
 AUR=""
 NOTFOUND=""
