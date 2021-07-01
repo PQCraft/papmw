@@ -10,7 +10,6 @@ function getroot() {
 }
 SUDOBIN="sudo"
 AURBIN="yay"
-AURPAC="-papmw-pac"
 function loadcfg() {
     if [ -f "$1" ]; then
         $(cat "$(find "$1" -type f)" | grep -o '^\S*=*' | grep '=' | perl -ne 'printf "export $_"')
@@ -18,7 +17,7 @@ function loadcfg() {
 }
 loadcfg "/home/$USER/.config/papmw.conf"
 loadcfg "/home/$USER/.papmw.conf"
-PAPMWVER="0.4"
+PAPMWVER="0.4.1"
 PAC=""
 AUR=""
 NOTFOUND=""
@@ -73,7 +72,7 @@ case $COMMAND in
         fi
         getroot
         if [ "$PAC" ]; then (echo -n y | sudo -- pacman --needed -S $PAC); fi
-        if [ "$AUR" ]; then "$AURBIN" --pacman "$AURPAC" --needed -S $AUR; fi
+        if [ "$AUR" ]; then "$AURBIN" --needed -S $AUR; fi
         ;;
     "uninstall" | "remove")
         if [ $# -lt 1 ]; then echo "Incorrect argument count."; exit 1; fi
