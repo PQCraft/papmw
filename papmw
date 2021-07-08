@@ -26,7 +26,7 @@ function loadcfg() {
 loadcfg "/etc/papmw.conf"
 loadcfg "${HOME}/.config/papmw.conf"
 loadcfg "${HOME}/.papmw.conf"
-PAPMWVER="0.6"
+PAPMWVER="0.6.1"
 PAC=""
 AUR=""
 NOTFOUND=""
@@ -66,7 +66,7 @@ case $COMMAND in
         p=0
         for i in "$@"; do
             printf "\r\e[0m\e[2K\e[1mSearching packages (%s%%)... [%s]\e[0m" "$((p*100/$#))" "$i"
-            if (pacman $PACFLAGS -Ss "^$i$" &> /dev/null); then 
+            if (pacman -Ss "^$i$" &> /dev/null); then 
                 PAC="$PAC$i "
             else
                 if [ "$("$AURBIN" $AURFLAGS -Ss "$i" 2> /dev/null | grep -E "*/$i ")" ]; then 
@@ -101,7 +101,7 @@ case $COMMAND in
         p=0
         for i in "$@"; do
             printf "\r\e[0m\e[2K\e[1mSearching packages (%s%%)... [%s]\e[0m" "$((p*100/$#))" "$i"
-            if (pacman $PACFLAGS -Q "$i" &> /dev/null); then 
+            if (pacman -Q "$i" &> /dev/null); then 
                 PAC="$PAC$i "
             else
                 NOTFOUND="$NOTFOUND$i "
