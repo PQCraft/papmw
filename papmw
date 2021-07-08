@@ -13,19 +13,24 @@ SUDOBIN="sudo"
 AURBIN="yay"
 IGNORE=""
 IGNOREGROUP=""
+echo "$0"
 function loadcfg() {
     if [ -f "$1" ]; then
-        $(cat "$1" | sed 's/ //g' | grep -oE '^[^0-9].*' | grep -oE '^[a-zA-Z0-9 ]*=.*' | sed -r 's#([^\])"#\1#g;s/=[ \t]*/="/;s/$/"/;s/(\".*\")|\s*/\1/g;s/^/export /')
+        local CFGFILENAME=".$(basename $0)-tmp-config.$(date +%s%N)"
+        echo "$(cat "$1" | sed 's/^[ \t]*//' | grep -oE '^[^0-9].*' | grep -oE '^[a-zA-Z0-9 ]*=.*' | sed -r 's#([^\])"#\1#g;s/=[ \t]*/="/;s/$/"/;s/(\".*\")|\s*/\1/g;s/^/export /')" >"$CFGFILENAME"
+        source "$CFGFILENAME"
+        rm -f "$CFGFILENAME"
     fi
 }
 loadcfg "${HOME}/.config/papmw.conf"
 loadcfg "${HOME}/.papmw.conf"
-PAPMWVER="0.5"
+PAPMWVER="0.5.1"
 PAC=""
 AUR=""
 NOTFOUND=""
 COMMAND="$1"
 shift
+echo "$IGNORE"; if [ "$IGNORE" ]; then IGNORE="--ignore=$(echo "$IGNORE" | sed 's/[ \t]*//g')"; fi; echo "$IGNORE"
 case $COMMAND in
     "help" | "--help")
         if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
