@@ -11,14 +11,16 @@ function getroot() {
 }
 SUDOBIN="sudo"
 AURBIN="yay"
+IGNORE=""
+IGNOREGROUP=""
 function loadcfg() {
     if [ -f "$1" ]; then
-        $(cat "$(find "$1" -type f)" | grep -o '^\S*=*' | grep '=' | perl -ne 'printf "export $_"')
+        $(cat "$1" | sed 's/ //g' | grep -oE '^[^0-9].*' | grep -oE '^[a-zA-Z0-9 ]*=.*' | sed -r 's#([^\])"#\1#g;s/=[ \t]*/="/;s/$/"/;s/(\".*\")|\s*/\1/g;s/^/export /')
     fi
 }
-loadcfg "/home/$USER/.config/papmw.conf"
-loadcfg "/home/$USER/.papmw.conf"
-PAPMWVER="0.4.2"
+loadcfg "${HOME}/.config/papmw.conf"
+loadcfg "${HOME}/.papmw.conf"
+PAPMWVER="0.5"
 PAC=""
 AUR=""
 NOTFOUND=""
@@ -72,7 +74,7 @@ case $COMMAND in
             fi
         fi
         getroot
-        if [ "$PAC" ]; then (echo -n y | sudo -- pacman --needed -S $PAC); fi
+        if [ "$PAC" ]; then sudo -- pacman --needed -S $PAC; fi
         if [ "$AUR" ]; then "$AURBIN" --needed -S $AUR; fi
         ;;
     "uninstall" | "remove")
@@ -105,7 +107,7 @@ case $COMMAND in
             fi
         fi
         getroot
-        echo -n y | sudo pacman -R $PAC
+        sudo pacman -R $PAC
         ;;
     "refresh" | "sync")
         if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
@@ -118,7 +120,9 @@ case $COMMAND in
     "update" | "upgrade")
         if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
         getroot
-        sudo pacman -Syu
+        if [ "$IGNORE" ]; then IGNORE="--ignore=$(echo "$IGNORE" | sed 's/[ \t]*//g')"; fi
+        if [ "$IGNOREGROUP" ]; then IGNOREGROUP="--ignoregroup=$(echo "$IGNOREGROUP" | sed 's/[ \t]*//g')"; fi
+        sudo pacman -Syu $IGNORE $IGNOREGROUP
         ;;
     *)
         echo "Unkown command:" "$COMMAND"
