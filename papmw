@@ -26,7 +26,7 @@ function loadcfg() {
 loadcfg "/etc/papmw.conf"
 loadcfg "${HOME}/.config/papmw.conf"
 loadcfg "${HOME}/.papmw.conf"
-PAPMWVER="0.6.1"
+PAPMWVER="0.6.2"
 PAC=""
 AUR=""
 NOTFOUND=""
@@ -48,12 +48,17 @@ case $COMMAND in
         echo "            /etc/papmw.conf"
         echo "            ~/.config/papmw.conf"
         echo "            ~/.papmw.conf"
-        echo "        SUDOBIN      - Path to executable to run commands as root"
-        echo "        AURBIN       - Path to the AUR helper"
-        echo "        PACFLAGS     - Options to pass to pacman"
-        echo "        AURFLAGS     - Options to pass to the AUR helper"
-        echo "        IGNORE       - Comma separated list of packages to ignore during upgrade"
-        echo "        IGNOREGROUP  - Comma separated list of package groups to ignore during upgrade"
+        echo "        SUDOBIN            - Path to executable to run commands as root"
+        echo "        AURBIN             - Path to the AUR helper"
+        echo "        PACFLAGS           - Options to pass to pacman"
+        echo "        PACINSTALLFLAGS    - Options to pass to pacman during an install command"
+        echo "        PACREMOVEFLAGS     - Options to pass to pacman during an uninstall/remove command"
+        echo "        PACSYNCFLAGS       - Options to pass to pacman during an refresh/sync command"
+        echo "        PACUPGRADEFLAGS    - Options to pass to pacman during an update/upgrade command"
+        echo "        AURFLAGS           - Options to pass to the AUR helper"
+        echo "        AURINSTALLFLAGS    - Options to pass to the AUR helper during an install command"
+        echo "        IGNORE             - Comma separated list of packages to ignore during upgrade"
+        echo "        IGNOREGROUP        - Comma separated list of package groups to ignore during upgrade"
         ;;
     "version" | "--version")
         if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
@@ -69,7 +74,7 @@ case $COMMAND in
             if (pacman -Ss "^$i$" &> /dev/null); then 
                 PAC="$PAC$i "
             else
-                if [ "$("$AURBIN" $AURFLAGS -Ss "$i" 2> /dev/null | grep -E "*/$i ")" ]; then 
+                if [ "$("$AURBIN" -Ss "$i" 2> /dev/null | grep -E "*/$i ")" ]; then 
                     AUR="$AUR$i "
                 else
                     NOTFOUND="$NOTFOUND$i "
@@ -92,8 +97,8 @@ case $COMMAND in
             fi
         fi
         getroot
-        if [ "$PAC" ]; then $SUDOBIN -- pacman $PACFLAGS -S $PAC; fi
-        if [ "$AUR" ]; then "$AURBIN" $AURFLAGS -S $AUR; fi
+        if [ "$PAC" ]; then $SUDOBIN -- pacman $PACFLAGS $PACINSTALLFLAGS -S $PAC; fi
+        if [ "$AUR" ]; then "$AURBIN" $AURFLAGS $AURINSTALLFLAGS -S $AUR; fi
         ;;
     "uninstall" | "remove")
         if [ $# -lt 1 ]; then echo "Incorrect argument count."; exit 1; fi
@@ -125,22 +130,19 @@ case $COMMAND in
             fi
         fi
         getroot
-        $SUDOBIN pacman $PACFLAGS -R $PAC
+        $SUDOBIN pacman $PACFLAGS $PACREMOVEFLAGS -R $PAC
         ;;
     "refresh" | "sync")
         if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
         getroot
-        printf "\e[0m\e[1mRefreshing pacman...\e[0m\n"
-        $SUDOBIN pacman $PACFLAGS -Sy
-        printf "\e[0m\e[1mRefreshing AUR...\e[0m\n"
-        yay -Sy
+        $SUDOBIN pacman $PACFLAGS $PACSYNCFLAGS -Sy
         ;;
     "update" | "upgrade")
         if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
         getroot
         if [ "$IGNORE" ]; then IGNORE="--ignore=$(echo "$IGNORE" | sed 's/[ \t]*//g')"; fi
         if [ "$IGNOREGROUP" ]; then IGNOREGROUP="--ignoregroup=$(echo "$IGNOREGROUP" | sed 's/[ \t]*//g')"; fi
-        $SUDOBIN pacman $PACFLAGS $IGNORE $IGNOREGROUP -Syu
+        $SUDOBIN pacman $PACFLAGS $PACUPGRADEFLAGS $IGNORE $IGNOREGROUP -Syu
         ;;
     *)
         echo "Unkown command:" "$COMMAND"
