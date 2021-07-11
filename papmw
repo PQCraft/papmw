@@ -5,14 +5,19 @@ if [[ -z "$@" ]]; then
 fi
 function getroot() {
     trap "true" SIGINT
-    if [ "$SUDOBIN" = "sudo" ] || [ "$SUDOBIN" = "/bin/sudo" ] || [ "$SUDOBIN" = "/usr/bin/sudo" ]; then sudo -k; fi
     if [ "$($SUDOBIN whoami)" != "root" ]; then echo "Superuser authentication failed."; exit 1; fi
     trap - SIGINT
 }
 SUDOBIN="sudo"
 AURBIN="yay"
 PACFLAGS=""
+PACINSTALLFLAGS=""
+PACREMOVEFLAGS=""
+PACSYNCFLAGS=""
+PACUPGRADEFLAGS=""
 AURFLAGS=""
+AURINSTALLFLAGS=""
+AURUPGRADEFLAGS=""
 IGNORE=""
 IGNOREGROUP=""
 function loadcfg() {
@@ -26,7 +31,7 @@ function loadcfg() {
 loadcfg "/etc/papmw.conf"
 loadcfg "${HOME}/.config/papmw.conf"
 loadcfg "${HOME}/.papmw.conf"
-PAPMWVER="0.6.2"
+PAPMWVER="0.6.3"
 PAC=""
 AUR=""
 NOTFOUND=""
@@ -57,6 +62,7 @@ case $COMMAND in
         echo "        PACUPGRADEFLAGS    - Options to pass to pacman during an update/upgrade command"
         echo "        AURFLAGS           - Options to pass to the AUR helper"
         echo "        AURINSTALLFLAGS    - Options to pass to the AUR helper during an install command"
+        echo "        AURUPGRADEFLAGS    - Options to pass to the AUR helper during an update/upgrade command"
         echo "        IGNORE             - Comma separated list of packages to ignore during upgrade"
         echo "        IGNOREGROUP        - Comma separated list of package groups to ignore during upgrade"
         ;;
@@ -143,6 +149,7 @@ case $COMMAND in
         if [ "$IGNORE" ]; then IGNORE="--ignore=$(echo "$IGNORE" | sed 's/[ \t]*//g')"; fi
         if [ "$IGNOREGROUP" ]; then IGNOREGROUP="--ignoregroup=$(echo "$IGNOREGROUP" | sed 's/[ \t]*//g')"; fi
         $SUDOBIN pacman $PACFLAGS $PACUPGRADEFLAGS $IGNORE $IGNOREGROUP -Syu
+        $AURBIN $AURFLAGS $AURUPGRADEFLAGS $IGNORE $IGNOREGROUP -Syu
         ;;
     *)
         echo "Unkown command:" "$COMMAND"
