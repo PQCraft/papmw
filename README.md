@@ -1,5 +1,5 @@
-# PAPMW
-### PQCraft's Arch Package Manager Wrapper
+# PAPMW <br>
+### <ins>P</ins>QCraft's <ins>A</ins>rch <ins>P</ins>ackage <ins>M</ins>anager <ins>W</ins>rapper<br>
 
 ---
 **Installation:**
