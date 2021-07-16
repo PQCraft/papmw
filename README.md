@@ -1,5 +1,5 @@
 # PAPMW
-PQCraft's Arch Package Manager Wrapper 
+### PQCraft's Arch Package Manager Wrapper
 
 ---
 **Installation:**
