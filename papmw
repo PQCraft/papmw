@@ -11,19 +11,21 @@ function getroot() {
 SUDOBIN="sudo"
 AURBIN="yay"
 PACFLAGS=""
-PACINSTALLFLAGS=""
+PACINSTALLFLAGS="--needed"
 PACREMOVEFLAGS=""
 PACSYNCFLAGS=""
 PACUPGRADEFLAGS=""
 AURFLAGS=""
-AURINSTALLFLAGS=""
+AURINSTALLFLAGS="--needed"
 AURUPGRADEFLAGS=""
 IGNORE=""
 IGNOREGROUP=""
+SPLITUPGRADE=""
 function loadcfg() {
     if [ -f "$1" ]; then
-        local CFGFILENAME=".$(basename $0)-tmp-config.$(date +%s%N)"
+        local CFGFILENAME="$HOME/.$(basename $0)-tmp-config.$(date +%s%N)"
         echo "$(cat "$1" | sed 's/^[ \t]*//' | grep -oE '^[^0-9].*' | grep -oE '^[a-zA-Z0-9 ]*=.*' | sed -r 's#([^\])"#\1#g;s/=[ \t]*/="/;s/$/"/;s/(\".*\")|\s*/\1/g;s/^/export /')" >"$CFGFILENAME"
+        chmod +x "$CFGFILENAME"
         source "$CFGFILENAME"
         rm -f "$CFGFILENAME"
     fi
@@ -31,7 +33,7 @@ function loadcfg() {
 loadcfg "/etc/papmw.conf"
 loadcfg "${HOME}/.config/papmw.conf"
 loadcfg "${HOME}/.papmw.conf"
-PAPMWVER="0.6.3"
+PAPMWVER="0.6.4"
 PAC=""
 AUR=""
 NOTFOUND=""
@@ -56,15 +58,16 @@ case $COMMAND in
         echo "        SUDOBIN            - Path to executable to run commands as root"
         echo "        AURBIN             - Path to the AUR helper"
         echo "        PACFLAGS           - Options to pass to pacman"
-        echo "        PACINSTALLFLAGS    - Options to pass to pacman during an install command"
+        echo "        PACINSTALLFLAGS    - Options to pass to pacman during an install command (default is '--needed')"
         echo "        PACREMOVEFLAGS     - Options to pass to pacman during an uninstall/remove command"
         echo "        PACSYNCFLAGS       - Options to pass to pacman during an refresh/sync command"
         echo "        PACUPGRADEFLAGS    - Options to pass to pacman during an update/upgrade command"
         echo "        AURFLAGS           - Options to pass to the AUR helper"
-        echo "        AURINSTALLFLAGS    - Options to pass to the AUR helper during an install command"
+        echo "        AURINSTALLFLAGS    - Options to pass to the AUR helper during an install command (default is '--needed')"
         echo "        AURUPGRADEFLAGS    - Options to pass to the AUR helper during an update/upgrade command"
         echo "        IGNORE             - Comma separated list of packages to ignore during upgrade"
         echo "        IGNOREGROUP        - Comma separated list of package groups to ignore during upgrade"
+        echo "        SPLITUPGRADE       - Set to true or yes if the AUR helper does not invoke a system upgrade"
         ;;
     "version" | "--version")
         if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
@@ -73,10 +76,10 @@ case $COMMAND in
         ;;
     "install")
         if [ $# -lt 1 ]; then echo "Incorrect argument count."; exit 1; fi
-        printf "\r\e[0m\e[2K\e[1mSearching packages...\e[0m"
+        printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages...\e[0m"
         p=0
         for i in "$@"; do
-            printf "\r\e[0m\e[2K\e[1mSearching packages (%s%%)... [%s]\e[0m" "$((p*100/$#))" "$i"
+            printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages (%s%%)... [%s]\e[0m" "$((p*100/$#))" "$i"
             if (pacman -Ss "^$i$" &> /dev/null); then 
                 PAC="$PAC$i "
             else
@@ -88,11 +91,11 @@ case $COMMAND in
             fi
             ((p=p+1))
         done
-        printf "\r\e[0m\e[2K\e[1mSearching packages (100%%)...\e[0m\n"
+        printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages (100%%)...\e[0m\n"
         if [ "$NOTFOUND" ]; then
             NOTFOUND="$(echo "$NOTFOUND" | sed -e 's/\s\+/, /g')"
             if [ ${#NOTFOUND} -gt 2 ]; then NOTFOUND="${NOTFOUND::-2}"; fi
-            printf "\e[0m\e[1m\e[31mThe following packages could not be found: %s\e[0m\n" "$NOTFOUND"
+            printf "\e[0m\e[33;1m -> \e[31mThe following packages could not be found:\e[0;1m %s\e[0m\n" "$NOTFOUND"
             if [ "$PAC$AUR" ]; then
                 echo -n "Continue? [y/N]: "
                 read -n 1 I
@@ -108,10 +111,10 @@ case $COMMAND in
         ;;
     "uninstall" | "remove")
         if [ $# -lt 1 ]; then echo "Incorrect argument count."; exit 1; fi
-        printf "\r\e[0m\e[2K\e[1mSearching packages...\e[0m"
+        printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages...\e[0m"
         p=0
         for i in "$@"; do
-            printf "\r\e[0m\e[2K\e[1mSearching packages (%s%%)... [%s]\e[0m" "$((p*100/$#))" "$i"
+            printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages (%s%%)... [%s]\e[0m" "$((p*100/$#))" "$i"
             if (pacman -Q "$i" &> /dev/null); then 
                 PAC="$PAC$i "
             else
@@ -119,11 +122,11 @@ case $COMMAND in
             fi
             ((p=p+1))
         done
-        printf "\r\e[0m\e[2K\e[1mSearching packages (100%%)...\e[0m\n"
+        printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages (100%%)...\e[0m\n"
         if [ "$NOTFOUND" ]; then
             NOTFOUND="$(echo "$NOTFOUND" | sed -e 's/\s\+/, /g')"
             if [ ${#NOTFOUND} -gt 2 ]; then NOTFOUND="${NOTFOUND::-2}"; fi
-            printf "\e[0m\e[1m\e[31mThe following packages are not installed: %s\e[0m\n" "$NOTFOUND"
+            printf "\e[0m\e[33;1m -> \e[31mThe following packages are not installed:\e[0;1m %s\e[0m\n" "$NOTFOUND"
             if [ "$PAC$AUR" ]; then
                 echo -n "Continue? [Y/n]: "
                 read -n 1 I
@@ -148,7 +151,7 @@ case $COMMAND in
         getroot
         if [ "$IGNORE" ]; then IGNORE="--ignore=$(echo "$IGNORE" | sed 's/[ \t]*//g')"; fi
         if [ "$IGNOREGROUP" ]; then IGNOREGROUP="--ignoregroup=$(echo "$IGNOREGROUP" | sed 's/[ \t]*//g')"; fi
-        $SUDOBIN pacman $PACFLAGS $PACUPGRADEFLAGS $IGNORE $IGNOREGROUP -Syu
+        if [ "${SPLITUPGRADE^^}" = "YES" ] || [ "${SPLITUPGRADE^^}" = "TRUE" ]; then $SUDOBIN pacman $PACFLAGS $PACUPGRADEFLAGS $IGNORE $IGNOREGROUP -Syu; fi
         $AURBIN $AURFLAGS $AURUPGRADEFLAGS $IGNORE $IGNOREGROUP -Syu
         ;;
     *)
