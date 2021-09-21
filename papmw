@@ -5,7 +5,7 @@ if [[ -z "$@" ]]; then
 fi
 function getroot() {
     trap "true" SIGINT
-    if [ "$($SUDOBIN whoami)" != "root" ]; then echo "Superuser authentication failed."; exit 1; fi
+    if [ "$($SUDOBIN whoami)" != "root" ]; then printtext 5; exit 1; fi
     trap - SIGINT
 }
 SUDOBIN="sudo"
@@ -21,6 +21,7 @@ AURUPGRADEFLAGS=""
 IGNORE=""
 IGNOREGROUP=""
 SPLITUPGRADE=""
+SPLITSEARCH=""
 function loadcfg() {
     if [ -f "$1" ]; then
         local CFGFILENAME="$HOME/.$(basename $0)-tmp-config.$(date +%s%N)"
@@ -30,16 +31,43 @@ function loadcfg() {
         rm -f "$CFGFILENAME"
     fi
 }
+function printtext() {
+    N="$1"
+    shift
+    case "$N" in
+        0)
+            printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages...\e[0m" "$@"
+            ;;
+        1)
+            printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages (100%%)...\e[0m%s" "$@"
+            ;;
+        2)
+            printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages (%s%%)... [%s]\e[0m" "$@"
+            ;;
+        3)
+            printf "\e[0m\e[33;1m -> \e[31mThe following packages could not be found:\e[0;1m %s\e[0m\n" "$@"
+            ;;
+        4)
+            printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Continue? [%s]:\e[0m " "$@"
+            ;;
+        5)
+            printf "\e[0m\e[33;1m -> \e[31mSuperuser authentication failed.\e[0m\n"
+            ;;
+        255)
+            echo "Incorrect argument count."
+            ;;
+    esac
+}
 loadcfg "/etc/papmw.conf"
 loadcfg "${HOME}/.config/papmw.conf"
 loadcfg "${HOME}/.papmw.conf"
-PAPMWVER="0.6.4"
+PAPMWVER="0.7"
 PAC=""
 AUR=""
 NOTFOUND=""
 COMMAND="$1"
 shift
-case $COMMAND in
+case "$COMMAND" in
     "help" | "--help")
         if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
         echo "PAPMW - PQCraft's Arch Package Manager Wrapper v$PAPMWVER"
@@ -68,18 +96,19 @@ case $COMMAND in
         echo "        IGNORE             - Comma separated list of packages to ignore during upgrade"
         echo "        IGNOREGROUP        - Comma separated list of package groups to ignore during upgrade"
         echo "        SPLITUPGRADE       - Set to true or yes if the AUR helper does not invoke a system upgrade"
+        echo "        SPLITSEARCH        - Set to true or yes if the AUR helper only returns AUR packages in search results"
         ;;
     "version" | "--version")
-        if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
+        if [ $# -gt 0 ]; then printtext 255; exit 1; fi
         echo "PAPMW - PQCraft's Arch Package Manager Wraper version $PAPMWVER"
         echo "Licensed under the GNU GPL v3"
         ;;
     "install")
-        if [ $# -lt 1 ]; then echo "Incorrect argument count."; exit 1; fi
-        printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages...\e[0m"
+        if [ $# -lt 1 ]; then printtext 255; exit 1; fi
+        printtext 0
         p=0
         for i in "$@"; do
-            printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages (%s%%)... [%s]\e[0m" "$((p*100/$#))" "$i"
+            printtext 2 "$((p*100/$#))" "$i"
             if (pacman -Ss "^$i$" &> /dev/null); then 
                 PAC="$PAC$i "
             else
@@ -91,13 +120,13 @@ case $COMMAND in
             fi
             ((p=p+1))
         done
-        printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages (100%%)...\e[0m\n"
+        printtext 1 $'\n'
         if [ "$NOTFOUND" ]; then
             NOTFOUND="$(echo "$NOTFOUND" | sed -e 's/\s\+/, /g')"
             if [ ${#NOTFOUND} -gt 2 ]; then NOTFOUND="${NOTFOUND::-2}"; fi
-            printf "\e[0m\e[33;1m -> \e[31mThe following packages could not be found:\e[0;1m %s\e[0m\n" "$NOTFOUND"
+            printtext 3 "$NOTFOUND"
             if [ "$PAC$AUR" ]; then
-                echo -n "Continue? [y/N]: "
+                printtext 4 "y/N"
                 read -n 1 I
                 if [[ ! -z "$I" ]]; then echo; fi
                 [[ "$I" =~ ^[^Yy]$ || -z "$I" ]] && exit 1
@@ -110,11 +139,11 @@ case $COMMAND in
         if [ "$AUR" ]; then "$AURBIN" $AURFLAGS $AURINSTALLFLAGS -S $AUR; fi
         ;;
     "uninstall" | "remove")
-        if [ $# -lt 1 ]; then echo "Incorrect argument count."; exit 1; fi
-        printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages...\e[0m"
+        if [ $# -lt 1 ]; then printtext 255; exit 1; fi
+        printtext 0
         p=0
         for i in "$@"; do
-            printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages (%s%%)... [%s]\e[0m" "$((p*100/$#))" "$i"
+            printtext 2 "$((p*100/$#))" "$i"
             if (pacman -Q "$i" &> /dev/null); then 
                 PAC="$PAC$i "
             else
@@ -122,13 +151,13 @@ case $COMMAND in
             fi
             ((p=p+1))
         done
-        printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Searching packages (100%%)...\e[0m\n"
+        printtext 1 $'\n'
         if [ "$NOTFOUND" ]; then
             NOTFOUND="$(echo "$NOTFOUND" | sed -e 's/\s\+/, /g')"
             if [ ${#NOTFOUND} -gt 2 ]; then NOTFOUND="${NOTFOUND::-2}"; fi
-            printf "\e[0m\e[33;1m -> \e[31mThe following packages are not installed:\e[0;1m %s\e[0m\n" "$NOTFOUND"
+            printtext 3 "$NOTFOUND"
             if [ "$PAC$AUR" ]; then
-                echo -n "Continue? [Y/n]: "
+                printtext 4 "Y/n"
                 read -n 1 I
                 if [[ ! -z "$I" ]]; then
                     echo
@@ -142,17 +171,43 @@ case $COMMAND in
         $SUDOBIN pacman $PACFLAGS $PACREMOVEFLAGS -R $PAC
         ;;
     "refresh" | "sync")
-        if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
+        if [ $# -gt 0 ]; then printtext 255; exit 1; fi
         getroot
         $SUDOBIN pacman $PACFLAGS $PACSYNCFLAGS -Sy
         ;;
     "update" | "upgrade")
-        if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
+        if [ $# -gt 0 ]; then printtext 255; exit 1; fi
         getroot
         if [ "$IGNORE" ]; then IGNORE="--ignore=$(echo "$IGNORE" | sed 's/[ \t]*//g')"; fi
         if [ "$IGNOREGROUP" ]; then IGNOREGROUP="--ignoregroup=$(echo "$IGNOREGROUP" | sed 's/[ \t]*//g')"; fi
         if [ "${SPLITUPGRADE^^}" = "YES" ] || [ "${SPLITUPGRADE^^}" = "TRUE" ]; then $SUDOBIN pacman $PACFLAGS $PACUPGRADEFLAGS $IGNORE $IGNOREGROUP -Syu; fi
         $AURBIN $AURFLAGS $AURUPGRADEFLAGS $IGNORE $IGNOREGROUP -Syu
+        ;;
+    "search" | "find")
+        if [ $# -lt 1 ]; then printtext 255; exit 1; fi
+        if [ "${SPLITSEARCH^^}" = "YES" ] || [ "${SPLITSEARCH^^}" = "TRUE" ]; then $SUDOBIN pacman $PACFLAGS -Ss "$@"; fi
+        $AURBIN $AURFLAGS -Ss "$@"
+        ;;
+    "localsearch" | "localfind" | "installed")
+        if [ $# -lt 1 ]; then printtext 255; exit 1; fi
+        printtext 0
+        p=0
+        for i in "$@"; do
+            printtext 2 "$((p*100/$#))" "$i"
+            if (pacman -Q "$i" &> /dev/null); then 
+                PAC="$PAC$i "
+            else
+                NOTFOUND="$NOTFOUND$i "
+            fi
+            ((p=p+1))
+        done
+        printtext 1 $'\n'
+        if [ "$NOTFOUND" ]; then
+            NOTFOUND="$(echo "$NOTFOUND" | sed -e 's/\s\+/, /g')"
+            if [ ${#NOTFOUND} -gt 2 ]; then NOTFOUND="${NOTFOUND::-2}"; fi
+            printtext 3 "$NOTFOUND"
+        fi
+        if [ ! -z "$PAC" ]; then pacman $PACFLAGS -Q $PAC; fi
         ;;
     *)
         echo "Unkown command:" "$COMMAND"
