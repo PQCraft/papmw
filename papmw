@@ -61,7 +61,7 @@ function printtext() {
 loadcfg "/etc/papmw.conf"
 loadcfg "${HOME}/.config/papmw.conf"
 loadcfg "${HOME}/.papmw.conf"
-PAPMWVER="0.7"
+PAPMWVER="0.7.1"
 PAC=""
 AUR=""
 NOTFOUND=""
@@ -109,10 +109,10 @@ case "$COMMAND" in
         p=0
         for i in "$@"; do
             printtext 2 "$((p*100/$#))" "$i"
-            if (pacman -Ss "^$i$" &> /dev/null); then 
+            if (pacman -Ss -- "^$i$" &> /dev/null); then 
                 PAC="$PAC$i "
             else
-                if [ "$("$AURBIN" -Ss "$i" 2> /dev/null | grep -E "*/$i ")" ]; then 
+                if [ "$("$AURBIN" -Ss -- "$i" 2> /dev/null | grep -E "*/$i ")" ]; then 
                     AUR="$AUR$i "
                 else
                     NOTFOUND="$NOTFOUND$i "
@@ -125,7 +125,7 @@ case "$COMMAND" in
             NOTFOUND="$(echo "$NOTFOUND" | sed -e 's/\s\+/, /g')"
             if [ ${#NOTFOUND} -gt 2 ]; then NOTFOUND="${NOTFOUND::-2}"; fi
             printtext 3 "$NOTFOUND"
-            if [ "$PAC$AUR" ]; then
+            if [ ! -z "$PAC$AUR" ]; then
                 printtext 4 "y/N"
                 read -n 1 I
                 if [[ ! -z "$I" ]]; then echo; fi
@@ -135,8 +135,8 @@ case "$COMMAND" in
             fi
         fi
         getroot
-        if [ "$PAC" ]; then $SUDOBIN -- pacman $PACFLAGS $PACINSTALLFLAGS -S $PAC; fi
-        if [ "$AUR" ]; then "$AURBIN" $AURFLAGS $AURINSTALLFLAGS -S $AUR; fi
+        if [ "$PAC" ]; then $SUDOBIN -- pacman $PACFLAGS $PACINSTALLFLAGS -S -- $PAC; fi
+        if [ "$AUR" ]; then "$AURBIN" $AURFLAGS $AURINSTALLFLAGS -S -- $AUR; fi
         ;;
     "uninstall" | "remove")
         if [ $# -lt 1 ]; then printtext 255; exit 1; fi
@@ -144,7 +144,7 @@ case "$COMMAND" in
         p=0
         for i in "$@"; do
             printtext 2 "$((p*100/$#))" "$i"
-            if (pacman -Q "$i" &> /dev/null); then 
+            if (pacman -Q -- "$i" &> /dev/null); then 
                 PAC="$PAC$i "
             else
                 NOTFOUND="$NOTFOUND$i "
@@ -168,7 +168,7 @@ case "$COMMAND" in
             fi
         fi
         getroot
-        $SUDOBIN pacman $PACFLAGS $PACREMOVEFLAGS -R $PAC
+        $SUDOBIN pacman $PACFLAGS $PACREMOVEFLAGS -R -- $PAC
         ;;
     "refresh" | "sync")
         if [ $# -gt 0 ]; then printtext 255; exit 1; fi
@@ -185,8 +185,8 @@ case "$COMMAND" in
         ;;
     "search" | "find")
         if [ $# -lt 1 ]; then printtext 255; exit 1; fi
-        if [ "${SPLITSEARCH^^}" = "YES" ] || [ "${SPLITSEARCH^^}" = "TRUE" ]; then $SUDOBIN pacman $PACFLAGS -Ss "$@"; fi
-        $AURBIN $AURFLAGS -Ss "$@"
+        if [ "${SPLITSEARCH^^}" = "YES" ] || [ "${SPLITSEARCH^^}" = "TRUE" ]; then $SUDOBIN pacman $PACFLAGS -Ss -- "$@"; fi
+        $AURBIN $AURFLAGS -Ss -- "$@"
         ;;
     "localsearch" | "localfind" | "installed")
         if [ $# -lt 1 ]; then printtext 255; exit 1; fi
@@ -194,7 +194,7 @@ case "$COMMAND" in
         p=0
         for i in "$@"; do
             printtext 2 "$((p*100/$#))" "$i"
-            if (pacman -Q "$i" &> /dev/null); then 
+            if (pacman -Q -- "$i" &> /dev/null); then 
                 PAC="$PAC$i "
             else
                 NOTFOUND="$NOTFOUND$i "
@@ -207,7 +207,7 @@ case "$COMMAND" in
             if [ ${#NOTFOUND} -gt 2 ]; then NOTFOUND="${NOTFOUND::-2}"; fi
             printtext 3 "$NOTFOUND"
         fi
-        if [ ! -z "$PAC" ]; then pacman $PACFLAGS -Q $PAC; fi
+        if [ ! -z "$PAC" ]; then pacman $PACFLAGS -Q -- $PAC; fi
         ;;
     *)
         echo "Unkown command:" "$COMMAND"
