@@ -61,7 +61,7 @@ function printtext() {
 loadcfg "/etc/papmw.conf"
 loadcfg "${HOME}/.config/papmw.conf"
 loadcfg "${HOME}/.papmw.conf"
-PAPMWVER="0.7.1"
+PAPMWVER="0.7.2"
 PAC=""
 AUR=""
 NOTFOUND=""
@@ -83,6 +83,7 @@ case "$COMMAND" in
         echo "            /etc/papmw.conf"
         echo "            ~/.config/papmw.conf"
         echo "            ~/.papmw.conf"
+        echo "        EDITOR             - The command used to edit config files"
         echo "        SUDOBIN            - Path to executable to run commands as root"
         echo "        AURBIN             - Path to the AUR helper"
         echo "        PACFLAGS           - Options to pass to pacman"
@@ -208,6 +209,31 @@ case "$COMMAND" in
             printtext 3 "$NOTFOUND"
         fi
         if [ ! -z "$PAC" ]; then pacman $PACFLAGS -Q -- $PAC; fi
+        ;;
+    "config")
+        if [ -z "$EDITOR" ]; then EDITOR=vi; fi
+        printf "\r\e[0m\e[2K\e[1;32m::\e[0;1m Choose a config to edit\n1. /etc/papmw.conf\n2. ~/.config/papmw.conf\n3. ~/.papmw.conf\nConfig to edit:\e[0m "
+        read -n 1 I
+        if [[ ! -z "$I" ]]; then echo; fi
+        case "$I" in
+            1)
+                CFG="/etc/papmw.conf"
+                getroot
+                ;;
+            2)
+                CFG="${HOME}/.config/papmw.conf"
+                SUDOBIN=""
+                ;;
+            3)
+                CFG="${HOME}/.papmw.conf"
+                SUDOBIN=""
+                ;;
+            *)
+                echo "Invalid option."
+                exit 1
+                ;;
+        esac
+        $SUDOBIN $EDITOR -- "$CFG"
         ;;
     *)
         echo "Unkown command:" "$COMMAND"
