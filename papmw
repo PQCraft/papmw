@@ -61,7 +61,7 @@ function printtext() {
 loadcfg "/etc/papmw.conf"
 loadcfg "${HOME}/.config/papmw.conf"
 loadcfg "${HOME}/.papmw.conf"
-PAPMWVER="0.7.2"
+PAPMWVER="0.7.2.1"
 PAC=""
 AUR=""
 NOTFOUND=""
@@ -69,7 +69,7 @@ COMMAND="$1"
 shift
 case "$COMMAND" in
     "help" | "--help")
-        if [ $# -gt 0 ]; then echo "Incorrect argument count."; exit 1; fi
+        if [ $# -gt 0 ]; then printtext 255; exit 1; fi
         echo "PAPMW - PQCraft's Arch Package Manager Wrapper v$PAPMWVER"
         echo "    Available commands:"
         echo "        help/--help                  - Displays this help text"
@@ -236,7 +236,8 @@ case "$COMMAND" in
         $SUDOBIN $EDITOR -- "$CFG"
         ;;
     *)
-        echo "Unkown command:" "$COMMAND"
+        echo "Unkown command: $COMMAND."
+        exit 1
         ;;
 esac
 
